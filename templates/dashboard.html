@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — ResumeIQ</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #fdf8f4; --surface: #fff8f5; --card: #ffffff; --border: #ecdfe8;
+    --accent: #b57bee; --accent2: #f2849e; --accent3: #5cba8e; --accent4: #e8a838;
+    --text: #2e2638; --muted: #8a7a96;
+    --gradient: linear-gradient(135deg, #b57bee 0%, #f2849e 100%);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; }
+  
+  nav {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 1rem 2rem; background: var(--surface); border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.4rem; background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .nav-right { display: flex; align-items: center; gap: 1rem; }
+  .user-badge { background: var(--card); border: 1px solid var(--border); padding: 0.4rem 0.9rem; border-radius: 100px; font-size: 0.85rem; color: var(--muted); }
+  .user-badge span { color: var(--text); font-weight: 500; }
+  .btn { display: inline-block; padding: 0.6rem 1.4rem; border-radius: 8px; text-decoration: none; font-weight: 600; transition: all 0.2s; cursor: pointer; border: none; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; }
+  .btn-primary { background: var(--gradient); color: white; }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(181,123,238,0.30); }
+  .btn-danger { background: rgba(255,101,132,0.1); color: var(--accent2); border: 1px solid rgba(255,101,132,0.3); }
+  .btn-danger:hover { background: rgba(255,101,132,0.2); }
+  .btn-sm { padding: 0.4rem 0.9rem; font-size: 0.82rem; }
+
+  main { max-width: 1280px; margin: 0 auto; padding: 2.5rem 2rem; }
+  .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+  h1 { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.8rem; }
+  .page-sub { color: var(--muted); font-size: 0.9rem; margin-top: 0.25rem; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem; margin-bottom: 2rem; }
+  .stat-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem;
+    position: relative; overflow: hidden; transition: border-color 0.2s;
+  }
+  .stat-card:hover { border-color: var(--accent); }
+  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+  .stat-card.c1::before { background: var(--accent); }
+  .stat-card.c2::before { background: var(--accent3); }
+  .stat-card.c3::before { background: var(--accent4); }
+  .stat-card.c4::before { background: var(--accent2); }
+  .stat-icon { font-size: 1.8rem; margin-bottom: 0.75rem; }
+  .stat-num { font-family: 'Syne', sans-serif; font-size: 2rem; font-weight: 800; }
+  .stat-label { color: var(--muted); font-size: 0.82rem; margin-top: 0.25rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+  .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem; }
+  .chart-card h3 { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; margin-bottom: 1.25rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.8rem; }
+  .chart-wrap { position: relative; height: 200px; }
+
+  .resumes-section h2 { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.2rem; margin-bottom: 1.25rem; }
+  .resume-table { width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  thead { background: var(--surface); }
+  th { text-align: left; padding: 1rem 1.25rem; font-size: 0.78rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; border-bottom: 1px solid var(--border); }
+  td { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(181,123,238,0.03); }
+  
+  .score-badge {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.35rem 0.8rem; border-radius: 100px; font-weight: 600; font-size: 0.82rem;
+  }
+  .score-high { background: rgba(67,233,123,0.12); color: var(--accent3); border: 1px solid rgba(67,233,123,0.25); }
+  .score-mid { background: rgba(246,201,14,0.12); color: var(--accent4); border: 1px solid rgba(246,201,14,0.25); }
+  .score-low { background: rgba(255,101,132,0.12); color: var(--accent2); border: 1px solid rgba(255,101,132,0.25); }
+
+  .score-bar-wrap { display: flex; align-items: center; gap: 0.75rem; }
+  .score-bar-bg { flex: 1; height: 6px; background: var(--border); border-radius: 3px; max-width: 120px; }
+  .score-bar-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
+
+  .file-name { font-weight: 500; display: flex; align-items: center; gap: 0.5rem; }
+  .file-icon { font-size: 1.1rem; }
+  .date-text { color: var(--muted); font-size: 0.85rem; }
+  .actions { display: flex; gap: 0.5rem; align-items: center; }
+  
+  .empty-state { text-align: center; padding: 4rem 2rem; }
+  .empty-icon { font-size: 4rem; margin-bottom: 1rem; opacity: 0.5; }
+  .empty-state p { color: var(--muted); margin-bottom: 1.5rem; }
+
+  .flash-messages { position: fixed; top: 5rem; right: 1rem; z-index: 999; }
+  .flash { padding: 0.75rem 1.25rem; border-radius: 8px; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.9rem; }
+  .flash.success { background: rgba(67,233,123,0.15); border: 1px solid rgba(67,233,123,0.3); color: var(--accent3); }
+  .flash.error { background: rgba(255,101,132,0.15); border: 1px solid rgba(255,101,132,0.3); color: var(--accent2); }
+
+  @media (max-width: 768px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .charts-row { grid-template-columns: 1fr; }
+    .page-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+  }
+</style>
+</head>
+<body>
+<nav>
+  <div class="logo">ResumeIQ</div>
+  <div class="nav-right">
+    <div class="user-badge">👤 <span>{{ session.username }}</span></div>
+    <a href="{{ url_for('upload') }}" class="btn btn-primary">+ Upload Resume</a>
+    <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">Logout</a>
+  </div>
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="flash-messages">
+    {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+  </div>
+  {% endif %}
+{% endwith %}
+
+<main>
+  <div class="page-header">
+    <div>
+      <h1>Resume Dashboard</h1>
+      <p class="page-sub">Track, analyze, and improve your resumes</p>
+    </div>
+    <a href="{{ url_for('upload') }}" class="btn btn-primary">+ Analyze New Resume</a>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card c1"><div class="stat-icon">📄</div><div class="stat-num">{{ stats.total }}</div><div class="stat-label">Total Resumes</div></div>
+    <div class="stat-card c2"><div class="stat-icon">📊</div><div class="stat-num">{{ stats.avg_score }}</div><div class="stat-label">Avg ATS Score</div></div>
+    <div class="stat-card c3"><div class="stat-icon">🏆</div><div class="stat-num">{{ stats.best_score }}</div><div class="stat-label">Best Score</div></div>
+    <div class="stat-card c4"><div class="stat-icon">✅</div><div class="stat-num">{{ stats.recent }}</div><div class="stat-label">Score ≥ 70</div></div>
+  </div>
+
+  {% if resumes %}
+  <div class="charts-row">
+    <div class="chart-card">
+      <h3>Score History</h3>
+      <div class="chart-wrap"><canvas id="historyChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Score Distribution</h3>
+      <div class="chart-wrap"><canvas id="distChart"></canvas></div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="resumes-section">
+    <h2>Your Resumes</h2>
+    {% if resumes %}
+    <div class="resume-table">
+      <table>
+        <thead>
+          <tr>
+            <th>File</th>
+            <th>ATS Score</th>
+            <th>Progress</th>
+            <th>Uploaded</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in resumes %}
+          <tr>
+            <td>
+              <div class="file-name">
+                <span class="file-icon">{{ '📕' if r.original_name.endswith('.pdf') else '📘' }}</span>
+                {{ r.original_name[:40] }}{{ '...' if r.original_name|length > 40 else '' }}
+              </div>
+            </td>
+            <td>
+              {% set score = r.ats_score or 0 %}
+              <span class="score-badge {{ 'score-high' if score >= 70 else ('score-mid' if score >= 50 else 'score-low') }}">
+                {{ '🟢' if score >= 70 else ('🟡' if score >= 50 else '🔴') }} {{ score }}%
+              </span>
+            </td>
+            <td>
+              <div class="score-bar-wrap">
+                <div class="score-bar-bg">
+                  <div class="score-bar-fill" style="width: {{ score }}%; background: {{ 'var(--accent3)' if score >= 70 else ('var(--accent4)' if score >= 50 else 'var(--accent2)') }}"></div>
+                </div>
+              </div>
+            </td>
+            <td><span class="date-text">{{ r.uploaded_at[:10] if r.uploaded_at else '—' }}</span></td>
+            <td>
+              <div class="actions">
+                <a href="{{ url_for('view_resume', resume_id=r.id) }}" class="btn btn-primary btn-sm">View</a>
+                <form method="POST" action="{{ url_for('delete_resume', resume_id=r.id) }}" onsubmit="return confirm('Delete this resume?')">
+                  <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="resume-table">
+      <div class="empty-state">
+        <div class="empty-icon">📂</div>
+        <p>No resumes yet. Upload your first resume to get started!</p>
+        <a href="{{ url_for('upload') }}" class="btn btn-primary">Upload Resume</a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</main>
+
+<script>
+const resumes = {{ resumes | tojson }};
+if (resumes.length > 0) {
+  const scores = resumes.slice().reverse().map(r => r.ats_score || 0);
+  const labels = resumes.slice().reverse().map(r => r.original_name.substring(0, 15) + '...');
+  const chartDefaults = { color: 'var(--muted)', grid: { color: 'rgba(180,150,200,0.12)' } };
+
+  new Chart(document.getElementById('historyChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'ATS Score',
+        data: scores,
+        borderColor: 'var(--accent)',
+        backgroundColor: 'rgba(181,123,238,0.12)',
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: 'var(--accent)',
+        pointRadius: 5
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { min: 0, max: 100, ticks: { color: 'var(--muted)' }, grid: { color: 'rgba(180,150,200,0.12)' } },
+        x: { ticks: { color: 'var(--muted)', maxRotation: 0 }, grid: { display: false } }
+      }
+    }
+  });
+
+  const dist = { 'Low (0-49)': 0, 'Mid (50-69)': 0, 'Good (70-84)': 0, 'Great (85+)': 0 };
+  scores.forEach(s => {
+    if (s < 50) dist['Low (0-49)']++;
+    else if (s < 70) dist['Mid (50-69)']++;
+    else if (s < 85) dist['Good (70-84)']++;
+    else dist['Great (85+)']++;
+  });
+
+  new Chart(document.getElementById('distChart'), {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(dist),
+      datasets: [{
+        data: Object.values(dist),
+        backgroundColor: ['var(--accent2)', 'var(--accent4)', 'var(--accent)', 'var(--accent3)'],
+        borderColor: 'var(--card)', borderWidth: 3
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: 'var(--muted)', padding: 12, font: { size: 11 } } }
+      },
+      cutout: '65%'
+    }
+  });
+}
+</script>
+</body>
+</html>

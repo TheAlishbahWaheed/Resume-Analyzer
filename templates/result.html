@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analysis Result — ResumeIQ</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #fdf8f4; --surface: #fff8f5; --card: #ffffff; --border: #ecdfe8;
+    --accent: #b57bee; --accent2: #f2849e; --accent3: #5cba8e; --accent4: #e8a838;
+    --text: #2e2638; --muted: #8a7a96;
+    --gradient: linear-gradient(135deg, #b57bee 0%, #f2849e 100%);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; }
+  nav {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 1rem 2rem; background: var(--surface); border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.4rem; background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-decoration: none; }
+  .btn { display: inline-block; padding: 0.6rem 1.4rem; border-radius: 8px; text-decoration: none; font-weight: 600; transition: all 0.2s; cursor: pointer; border: none; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; }
+  .btn-primary { background: var(--gradient); color: white; }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(181,123,238,0.30); }
+  .btn-outline { border: 1px solid var(--border); color: var(--muted); background: transparent; }
+  .btn-outline:hover { border-color: var(--accent); color: var(--text); }
+
+  main { max-width: 1200px; margin: 0 auto; padding: 2.5rem 2rem; }
+  .result-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap; }
+  .result-title h1 { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.6rem; }
+  .result-title p { color: var(--muted); margin-top: 0.25rem; font-size: 0.9rem; }
+  .header-actions { display: flex; gap: 0.75rem; align-items: center; }
+
+  .score-hero {
+    background: var(--card); border: 1px solid var(--border); border-radius: 18px;
+    padding: 2.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 3rem;
+    position: relative; overflow: hidden;
+  }
+  .score-hero::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--gradient);
+  }
+  .score-ring { position: relative; flex-shrink: 0; }
+  .score-ring canvas { display: block; }
+  .score-center {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .score-num { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 2.4rem; line-height: 1; }
+  .score-pct { color: var(--muted); font-size: 0.8rem; font-weight: 500; margin-top: 0.2rem; }
+  .score-info h2 { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.6rem; margin-bottom: 0.5rem; }
+  .score-info p { color: var(--muted); line-height: 1.6; max-width: 500px; margin-bottom: 1.25rem; }
+  .score-meta { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+  .score-meta-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.88rem; }
+  .score-meta-item span:first-child { color: var(--muted); }
+  .score-meta-item strong { color: var(--text); }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem; }
+  .card-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem; }
+
+  .breakdown-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.9rem; }
+  .breakdown-row:last-child { margin-bottom: 0; }
+  .breakdown-label { font-size: 0.88rem; flex: 1; }
+  .breakdown-bar-bg { flex: 2; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .breakdown-bar-fill { height: 100%; border-radius: 4px; background: var(--gradient); transition: width 1.2s ease; }
+  .breakdown-score { font-weight: 700; font-size: 0.85rem; min-width: 48px; text-align: right; color: var(--accent); }
+
+  .skills-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .skill-tag {
+    padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.8rem; font-weight: 500;
+    border: 1px solid transparent;
+  }
+  .skill-tech { background: rgba(181,123,238,0.10); color: #a09fff; border-color: rgba(108,99,255,0.25); }
+  .skill-soft { background: rgba(67,233,123,0.1); color: var(--accent3); border-color: rgba(67,233,123,0.25); }
+  .skill-missing { background: rgba(255,101,132,0.1); color: var(--accent2); border-color: rgba(255,101,132,0.25); }
+
+  .suggestion-item {
+    display: flex; gap: 0.85rem; padding: 0.9rem; border-radius: 10px;
+    margin-bottom: 0.75rem; border: 1px solid transparent; font-size: 0.88rem; line-height: 1.5;
+  }
+  .suggestion-item:last-child { margin-bottom: 0; }
+  .suggestion-item.success { background: rgba(67,233,123,0.07); border-color: rgba(67,233,123,0.2); }
+  .suggestion-item.warning { background: rgba(246,201,14,0.07); border-color: rgba(246,201,14,0.2); }
+  .suggestion-item.error { background: rgba(255,101,132,0.07); border-color: rgba(255,101,132,0.2); }
+  .suggestion-item.info { background: rgba(181,123,238,0.06); border-color: rgba(108,99,255,0.2); }
+  .suggestion-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 0.05rem; }
+
+  .section-check { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.65rem; font-size: 0.9rem; }
+  .section-check:last-child { margin-bottom: 0; }
+  .check-icon { font-size: 1rem; width: 20px; flex-shrink: 0; }
+  .section-name { flex: 1; }
+  .check-yes { color: var(--accent3); }
+  .check-no { color: var(--accent2); }
+
+  .contact-item { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.65rem; font-size: 0.88rem; }
+  .contact-item:last-child { margin-bottom: 0; }
+  .contact-icon { font-size: 1rem; width: 22px; }
+  .contact-val { color: var(--text); word-break: break-all; }
+  .contact-val.missing { color: var(--muted); font-style: italic; }
+
+  .chart-wrap { height: 220px; position: relative; }
+
+  .empty-skills { color: var(--muted); font-size: 0.88rem; font-style: italic; }
+
+  @media (max-width: 900px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .score-hero { flex-direction: column; gap: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+<nav>
+  <a href="{{ url_for('dashboard') }}" class="logo">ResumeIQ</a>
+  <div style="display:flex;gap:0.75rem;">
+    <a href="{{ url_for('upload') }}" class="btn btn-primary">+ New Analysis</a>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-outline">← Dashboard</a>
+  </div>
+</nav>
+
+<main>
+  <div class="result-header">
+    <div class="result-title">
+      <h1>{{ resume.original_name }}</h1>
+      <p>Analyzed on {{ resume.uploaded_at[:10] if resume.uploaded_at else '' }}</p>
+    </div>
+  </div>
+
+  {% set score = resume.ats_score or 0 %}
+  {% set score_color = 'var(--accent3)' if score >= 70 else ('var(--accent4)' if score >= 50 else 'var(--accent2)') %}
+  {% set score_label = 'Excellent' if score >= 85 else ('Good' if score >= 70 else ('Fair' if score >= 50 else 'Needs Work')) %}
+
+  <!-- Score Hero -->
+  <div class="score-hero">
+    <div class="score-ring">
+      <canvas id="scoreRing" width="160" height="160"></canvas>
+      <div class="score-center">
+        <div class="score-num" style="color: {{ score_color }}">{{ score }}</div>
+        <div class="score-pct">/ 100</div>
+      </div>
+    </div>
+    <div class="score-info">
+      <h2>{{ score_label }} ATS Score</h2>
+      <p>
+        {% if score >= 85 %}Your resume is highly optimized for ATS systems. Excellent keyword density, complete sections, and strong quantifiable achievements.
+        {% elif score >= 70 %}Your resume performs well against ATS filters. A few more targeted keywords and improvements could push you to excellent.
+        {% elif score >= 50 %}Your resume has moderate ATS compatibility. Focus on the suggestions below to significantly improve your pass rate.
+        {% else %}Your resume needs significant improvement to pass ATS filters. Follow the AI suggestions to boost your score.{% endif %}
+      </p>
+      <div class="score-meta">
+        <div class="score-meta-item"><span>Words:</span><strong>{{ analysis.word_count }}</strong></div>
+        <div class="score-meta-item"><span>Tech Skills:</span><strong>{{ skills.technical|length }}</strong></div>
+        <div class="score-meta-item"><span>Soft Skills:</span><strong>{{ skills.soft|length }}</strong></div>
+        <div class="score-meta-item"><span>Action Verbs:</span><strong>{{ analysis.action_verbs|length }}</strong></div>
+        {% if analysis.years_experience > 0 %}
+        <div class="score-meta-item"><span>Experience:</span><strong>~{{ analysis.years_experience }} yrs</strong></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Score Breakdown + Sections -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">📊 Score Breakdown</div>
+      {% for key, val in analysis.score_breakdown.items() %}
+      {% set max_map = {'Sections': 25, 'Contact Info': 10, 'Skills': 20, 'Action Verbs': 10, 'Achievements': 10, 'Length': 10} %}
+      {% set max_val = max_map.get(key, 20) %}
+      <div class="breakdown-row">
+        <div class="breakdown-label">{{ key }}</div>
+        <div class="breakdown-bar-bg">
+          <div class="breakdown-bar-fill" data-width="{{ (val / max_val * 100)|round }}"></div>
+        </div>
+        <div class="breakdown-score">{{ val }}/{{ max_val }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="card">
+      <div class="card-title">📋 Section Detection</div>
+      {% for section, found in analysis.sections.items() %}
+      <div class="section-check">
+        <span class="check-icon {{ 'check-yes' if found else 'check-no' }}">{{ '✅' if found else '❌' }}</span>
+        <span class="section-name" style="color:{{ 'var(--text)' if found else 'var(--muted)' }}">{{ section|capitalize }}</span>
+        {% if not found %}<span style="font-size:0.75rem;color:var(--muted)">Missing</span>{% endif %}
+      </div>
+      {% endfor %}
+      <hr style="border-color:var(--border);margin:1rem 0;">
+      <div class="card-title" style="margin-bottom:0.75rem;">📬 Contact Info</div>
+      {% set contact = analysis.contact %}
+      <div class="contact-item"><span class="contact-icon">📧</span><span class="contact-val {{ '' if contact.email else 'missing' }}">{{ contact.email or 'Not found' }}</span></div>
+      <div class="contact-item"><span class="contact-icon">📱</span><span class="contact-val {{ '' if contact.phone else 'missing' }}">{{ contact.phone or 'Not found' }}</span></div>
+      <div class="contact-item"><span class="contact-icon">🔗</span><span class="contact-val {{ '' if contact.linkedin else 'missing' }}">{{ contact.linkedin or 'Not found' }}</span></div>
+      <div class="contact-item"><span class="contact-icon">💻</span><span class="contact-val {{ '' if contact.github else 'missing' }}">{{ contact.github or 'Not found' }}</span></div>
+    </div>
+  </div>
+
+  <!-- Skills -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">⚡ Technical Skills ({{ skills.technical|length }})</div>
+      {% if skills.technical %}
+      <div class="skills-list">
+        {% for skill in skills.technical %}<span class="skill-tag skill-tech">{{ skill }}</span>{% endfor %}
+      </div>
+      {% else %}<p class="empty-skills">No technical skills detected. Add a Skills section.</p>{% endif %}
+    </div>
+    <div class="card">
+      <div class="card-title">🤝 Soft Skills ({{ skills.soft|length }})</div>
+      {% if skills.soft %}
+      <div class="skills-list">
+        {% for skill in skills.soft %}<span class="skill-tag skill-soft">{{ skill }}</span>{% endfor %}
+      </div>
+      {% else %}<p class="empty-skills">No soft skills detected. Mention leadership, communication, etc.</p>{% endif %}
+      {% if analysis.action_verbs %}
+      <hr style="border-color:var(--border);margin:1rem 0;">
+      <div class="card-title" style="margin-bottom:0.75rem;">💪 Action Verbs ({{ analysis.action_verbs|length }})</div>
+      <div class="skills-list">
+        {% for verb in analysis.action_verbs[:12] %}<span class="skill-tag" style="background:rgba(246,201,14,0.08);color:var(--accent4);border-color:rgba(246,201,14,0.2)">{{ verb }}</span>{% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Missing Skills + Chart -->
+  {% if resume.job_description %}
+  {% set missing = [] %}
+  {% if analysis %}
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">🔍 Job Match Analysis</div>
+      <div class="chart-wrap"><canvas id="matchChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">❌ Skills Gap (from JD)</div>
+      {% set missing_skills = [] %}
+      {% for skill in ['python','javascript','react','node','docker','kubernetes','aws','azure','sql','mongodb','java','typescript','go','rust','machine learning','tensorflow'] %}
+        {% if skill.lower() not in resume.job_description.lower() or skill.lower() not in (resume.text_content or '').lower() %}
+        {% endif %}
+      {% endfor %}
+      <p style="color:var(--muted);font-size:0.88rem;margin-bottom:1rem;">Skills mentioned in the job description not found in your resume:</p>
+      <p style="color:var(--accent3);font-size:0.85rem;">✅ Upload with job description to see detailed gap analysis</p>
+    </div>
+  </div>
+  {% endif %}
+  {% endif %}
+
+  <!-- AI Suggestions -->
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="card-title">🤖 AI Improvement Suggestions</div>
+    {% if analysis.suggestions %}
+      {% for s in analysis.suggestions %}
+      <div class="suggestion-item {{ s.type }}">
+        <span class="suggestion-icon">{{ s.icon }}</span>
+        <span>{{ s.text }}</span>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="empty-skills">No suggestions available.</p>
+    {% endif %}
+  </div>
+
+  <!-- Resume Text Preview -->
+  <div class="card">
+    <div class="card-title">📄 Extracted Text Preview</div>
+    <pre style="color:var(--muted);font-size:0.8rem;line-height:1.7;white-space:pre-wrap;max-height:300px;overflow-y:auto;font-family:'DM Sans',sans-serif;">{{ resume.text_content[:2000] if resume.text_content else 'No text extracted' }}{% if resume.text_content and resume.text_content|length > 2000 %}...{% endif %}</pre>
+  </div>
+</main>
+
+<script>
+// Score ring chart
+const score = {{ score }};
+const scoreColor = '{{ score_color }}';
+const ctx = document.getElementById('scoreRing').getContext('2d');
+new Chart(ctx, {
+  type: 'doughnut',
+  data: {
+    datasets: [{
+      data: [score, 100 - score],
+      backgroundColor: [scoreColor, 'rgba(181,123,238,0.1)'],
+      borderWidth: 0,
+      borderRadius: 4
+    }]
+  },
+  options: {
+    cutout: '78%',
+    plugins: { tooltip: { enabled: false }, legend: { display: false } },
+    animation: { duration: 1200 }
+  }
+});
+
+// Animate breakdown bars
+document.querySelectorAll('.breakdown-bar-fill').forEach(bar => {
+  const width = bar.dataset.width;
+  bar.style.width = '0%';
+  setTimeout(() => bar.style.width = width + '%', 300);
+});
+
+// Match chart if JD present
+{% if resume.job_description %}
+const matchCtx = document.getElementById('matchChart');
+if (matchCtx) {
+  const bd = {{ analysis.score_breakdown | tojson }};
+  new Chart(matchCtx, {
+    type: 'radar',
+    data: {
+      labels: Object.keys(bd),
+      datasets: [{
+        label: 'Your Score',
+        data: Object.values(bd),
+        backgroundColor: 'rgba(181,123,238,0.12)',
+        borderColor: 'var(--accent)',
+        pointBackgroundColor: 'var(--accent)',
+        pointRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        r: {
+          ticks: { color: 'var(--muted)', font: { size: 10 }, backdropColor: 'transparent' },
+          grid: { color: 'rgba(180,150,200,0.15)' },
+          pointLabels: { color: 'var(--muted)', font: { size: 10 } },
+          beginAtZero: true
+        }
+      }
+    }
+  });
+}
+{% endif %}
+</script>
+</body>
+</html>

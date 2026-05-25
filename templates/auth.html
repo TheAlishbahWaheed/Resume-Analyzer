@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ 'Sign In' if mode == 'login' else 'Create Account' }} — ResumeIQ</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fdf8f4; --surface: #fff8f5; --card: #ffffff; --border: #ecdfe8;
+    --accent: #b57bee; --accent2: #f2849e; --accent3: #5cba8e; --accent4: #e8a838;
+    --text: #2e2638; --muted: #8a7a96;
+    --gradient: linear-gradient(135deg, #b57bee 0%, #f2849e 100%);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+  body::before {
+    content: ''; position: fixed; width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(181,123,238,0.15) 0%, transparent 70%);
+    top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none;
+  }
+  .auth-container { width: 100%; max-width: 420px; position: relative; z-index: 1; }
+  .auth-logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.8rem; background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; margin-bottom: 2rem; text-decoration: none; display: block; }
+  .auth-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 2.5rem; }
+  h2 { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.6rem; margin-bottom: 0.4rem; }
+  .auth-sub { color: var(--muted); margin-bottom: 2rem; font-size: 0.95rem; }
+  .form-group { margin-bottom: 1.25rem; }
+  label { display: block; font-size: 0.85rem; font-weight: 500; color: var(--muted); margin-bottom: 0.5rem; letter-spacing: 0.05em; text-transform: uppercase; }
+  input {
+    width: 100%; background: var(--surface); border: 1.5px solid var(--border);
+    color: var(--text); padding: 0.85rem 1rem; border-radius: 10px;
+    font-family: 'DM Sans', sans-serif; font-size: 0.95rem; outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus { border-color: var(--accent); }
+  input::placeholder { color: var(--muted); }
+  .btn-submit {
+    width: 100%; background: var(--gradient); color: white; border: none;
+    padding: 0.95rem; border-radius: 10px; font-family: 'DM Sans', sans-serif;
+    font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-top: 0.5rem;
+  }
+  .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(181,123,238,0.35); }
+  .auth-switch { text-align: center; margin-top: 1.5rem; color: var(--muted); font-size: 0.9rem; }
+  .auth-switch a { color: var(--accent); text-decoration: none; font-weight: 500; }
+  .auth-switch a:hover { text-decoration: underline; }
+  .back-link { text-align: center; margin-bottom: 1rem; }
+  .back-link a { color: var(--muted); text-decoration: none; font-size: 0.9rem; }
+  .back-link a:hover { color: var(--text); }
+  .flash-messages { margin-bottom: 1rem; }
+  .flash { padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 500; }
+  .flash.success { background: rgba(67,233,123,0.1); border: 1px solid rgba(67,233,123,0.3); color: var(--accent3); }
+  .flash.error { background: rgba(255,101,132,0.1); border: 1px solid rgba(255,101,132,0.3); color: var(--accent2); }
+</style>
+</head>
+<body>
+<div class="auth-container">
+  <a href="{{ url_for('index') }}" class="auth-logo">ResumeIQ</a>
+  <div class="auth-card">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div class="flash-messages">
+        {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+      </div>
+      {% endif %}
+    {% endwith %}
+    <h2>{{ 'Welcome back' if mode == 'login' else 'Create account' }}</h2>
+    <p class="auth-sub">{{ 'Sign in to access your resume dashboard' if mode == 'login' else 'Start analyzing resumes with AI' }}</p>
+    <form method="POST">
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" name="username" placeholder="Enter your username" required>
+      </div>
+      {% if mode == 'register' %}
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" name="email" placeholder="your@email.com" required>
+      </div>
+      {% endif %}
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" name="password" placeholder="••••••••" required>
+      </div>
+      <button type="submit" class="btn-submit">{{ 'Sign In →' if mode == 'login' else 'Create Account →' }}</button>
+    </form>
+    <div class="auth-switch">
+      {% if mode == 'login' %}
+        Don't have an account? <a href="{{ url_for('register') }}">Sign up free</a>
+      {% else %}
+        Already have an account? <a href="{{ url_for('login') }}">Sign in</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+</body>
+</html>
