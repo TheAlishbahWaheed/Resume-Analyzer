@@ -1,7 +1,7 @@
 # Resume Analyzer
 
 AI-powered Resume Analyzer that evaluates resumes and provides feedback on ATS compatibility, skills, formatting, and improvements.
-
+An application that will help users enhance their CV/Resume
 ## Features
 - Resume upload
 - ATS score analysis
@@ -12,7 +12,6 @@ AI-powered Resume Analyzer that evaluates resumes and provides feedback on ATS c
 - Python
 - Flask
 - HTML/CSS
-- Machine Learning
 
 ## Installation
 
