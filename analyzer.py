@@ -150,36 +150,29 @@ def calculate_ats_score(resume_text, job_description):
     contact = extract_contact_info(resume_text)
     action_verbs = count_action_verbs(resume_text)
 
-    # Section completeness (25 pts)
     section_scores = {'summary': 5, 'experience': 8, 'education': 5, 'skills': 7}
     for sec, pts in section_scores.items():
         if sections.get(sec):
             score += pts
 
-    # Contact info (10 pts)
     if contact['email']: score += 4
     if contact['phone']: score += 3
     if contact['linkedin']: score += 3
 
-    # Skills (20 pts)
     skill_score = min(20, len(skills['technical']) * 1.5 + len(skills['soft']) * 0.5)
     score += skill_score
 
-    # Action verbs (10 pts)
     score += min(10, len(action_verbs) * 0.8)
 
-    # Quantifiable achievements (10 pts)
     if re.search(r'\d+%|\$[\d,]+|\d+x', text_lower):
         score += 10
 
-    # Length (10 pts)
     word_count = len(resume_text.split())
     if 350 <= word_count <= 800:
         score += 10
     elif 200 <= word_count < 350 or 800 < word_count <= 1000:
         score += 5
 
-    # Job description matching (15 pts)
     if job_description:
         job_lower = job_description.lower()
         job_words = set(re.findall(r'\b[a-z]{3,}\b', job_lower)) - {'the','and','for','are','with','that','this','have','from','they','will','been','were','their','what','your','which','when','there','about','would','could','should','into','also','than','then','some','more','over','after','before'}
@@ -229,3 +222,142 @@ def analyze_resume(text):
         'suggestions': suggestions,
         'score_breakdown': score_breakdown
     }
+
+
+# ─────────────────────────────────────────────
+#  Job description matching
+# ─────────────────────────────────────────────
+
+# Common words excluded from "general keyword overlap" — same stoplist
+# style calculate_ats_score uses internally for its JD-matching bonus.
+JD_STOPWORDS = {
+    'the', 'and', 'for', 'are', 'with', 'that', 'this', 'have', 'from',
+    'they', 'will', 'been', 'were', 'their', 'what', 'your', 'which',
+    'when', 'there', 'about', 'would', 'could', 'should', 'into', 'also',
+    'than', 'then', 'some', 'more', 'over', 'after', 'before', 'each',
+    'such', 'only', 'other', 'must', 'while', 'within', 'across',
+}
+
+
+class JobMatchAnalyzer:
+    """
+    Compares a resume's text against a job description and produces a
+    structured breakdown: matched/missing technical skills, matched/missing
+    soft skills, general keyword overlap, and an overall match percentage.
+    """
+
+    def __init__(self, resume_text, job_description):
+        self.resume_text = resume_text
+        self.job_description = job_description
+        self.resume_lower = resume_text.lower()
+        self.job_lower = job_description.lower()
+
+    def _skills_in(self, text_lower, skill_list):
+        return {s for s in skill_list if re.search(r'\b' + re.escape(s) + r'\b', text_lower)}
+
+    def technical_match(self):
+        job_skills = self._skills_in(self.job_lower, TECH_SKILLS)
+        resume_skills = self._skills_in(self.resume_lower, TECH_SKILLS)
+        matched = sorted(job_skills & resume_skills)
+        missing = sorted(job_skills - resume_skills)
+        return {
+            'required': sorted(job_skills),
+            'matched': matched,
+            'missing': missing,
+            'match_count': len(matched),
+            'required_count': len(job_skills),
+        }
+
+    def soft_skill_match(self):
+        job_skills = self._skills_in(self.job_lower, SOFT_SKILLS)
+        resume_skills = self._skills_in(self.resume_lower, SOFT_SKILLS)
+        matched = sorted(job_skills & resume_skills)
+        missing = sorted(job_skills - resume_skills)
+        return {
+            'required': sorted(job_skills),
+            'matched': matched,
+            'missing': missing,
+            'match_count': len(matched),
+            'required_count': len(job_skills),
+        }
+
+    def keyword_overlap(self):
+        """General (non-skill-list) keyword overlap — mirrors the word-level
+        matching calculate_ats_score uses for its JD-matching bonus."""
+        job_words = set(re.findall(r'\b[a-z]{3,}\b', self.job_lower)) - JD_STOPWORDS
+        resume_words = set(re.findall(r'\b[a-z]{3,}\b', self.resume_lower)) - JD_STOPWORDS
+        matched = sorted(job_words & resume_words)
+        missing = sorted(job_words - resume_words)
+        ratio = (len(job_words & resume_words) / len(job_words)) if job_words else 0
+        return {
+            'matched': matched,
+            'missing': missing,
+            'overlap_ratio': round(ratio, 3),
+        }
+
+    def match_percentage(self):
+        """
+        Weighted overall match: technical skills matter most for ATS-style
+        matching, soft skills and general keywords contribute the rest.
+        Weights: technical 55%, soft skills 15%, general keywords 30%.
+        """
+        tech = self.technical_match()
+        soft = self.soft_skill_match()
+        overlap = self.keyword_overlap()
+
+        tech_ratio = (tech['match_count'] / tech['required_count']) if tech['required_count'] else 1.0
+        soft_ratio = (soft['match_count'] / soft['required_count']) if soft['required_count'] else 1.0
+        keyword_ratio = overlap['overlap_ratio']
+
+        weighted = (tech_ratio * 0.55) + (soft_ratio * 0.15) + (keyword_ratio * 0.30)
+        return round(weighted * 100, 1)
+
+    def full_report(self):
+        tech = self.technical_match()
+        soft = self.soft_skill_match()
+        overlap = self.keyword_overlap()
+
+        return {
+            'match_percentage': self.match_percentage(),
+            'technical': tech,
+            'soft_skills': soft,
+            'keyword_overlap': {
+                'matched_count': len(overlap['matched']),
+                'missing_count': len(overlap['missing']),
+                # Cap the list returned to the UI — this can be long.
+                'top_missing': overlap['missing'][:20],
+                'overlap_ratio': overlap['overlap_ratio'],
+            },
+            'recommendations': self._recommendations(tech, soft),
+        }
+
+    def _recommendations(self, tech, soft):
+        recs = []
+        if tech['missing']:
+            shown = ', '.join(tech['missing'][:8])
+            recs.append({
+                'icon': '🛠️',
+                'text': f"Add these in-demand technical skills if you have them: {shown}.",
+            })
+        if tech['required_count'] and tech['match_count'] / tech['required_count'] < 0.5:
+            recs.append({
+                'icon': '⚠️',
+                'text': 'Less than half of the job\'s listed technical skills appear on your resume. Consider tailoring it more closely to this role.',
+            })
+        if soft['missing']:
+            shown = ', '.join(soft['missing'][:5])
+            recs.append({
+                'icon': '🤝',
+                'text': f"The posting emphasizes soft skills you haven't highlighted: {shown}.",
+            })
+        if not recs:
+            recs.append({
+                'icon': '✅',
+                'text': 'Strong alignment with this job description — no major gaps detected.',
+            })
+        return recs
+
+
+def compare_to_job(resume_text, job_description):
+    """Convenience wrapper: build a JobMatchAnalyzer and return its full report."""
+    return JobMatchAnalyzer(resume_text, job_description).full_report()
