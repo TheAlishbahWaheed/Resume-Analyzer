@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import sqlite3, os, json
-from analyzer import parse_resume, analyze_resume, calculate_ats_score
+from analyzer import parse_resume, analyze_resume, calculate_ats_score, compare_to_job
 
 app = Flask(__name__)
 app.secret_key = 'resume_analyzer_secret_2024'
@@ -36,11 +36,21 @@ def init_db():
             ats_score REAL DEFAULT 0,
             job_description TEXT,
             analysis_data TEXT,
+            job_match_data TEXT,
             uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id)
         );
     ''')
     db.commit()
+
+    # Migration safety net: if resumes.db already existed before this column
+    # was added, CREATE TABLE IF NOT EXISTS above is a no-op and the column
+    # would be missing. Add it if needed so existing databases keep working.
+    existing_cols = [row['name'] for row in db.execute("PRAGMA table_info(resumes)").fetchall()]
+    if 'job_match_data' not in existing_cols:
+        db.execute('ALTER TABLE resumes ADD COLUMN job_match_data TEXT')
+        db.commit()
+
     db.close()
 
 def allowed_file(filename):
@@ -105,7 +115,6 @@ def dashboard():
         (session['user_id'],)
     ).fetchall()
     db.close()
-    # Convert to dicts — required for tojson in dashboard.html charts
     resumes = rows_to_dicts(rows)
     scores = [r['ats_score'] for r in resumes if r['ats_score']]
     stats = {
@@ -170,11 +179,106 @@ def view_resume(resume_id):
     if not resume:
         flash('Resume not found.', 'error')
         return redirect(url_for('dashboard'))
-    # Convert to dict for consistent template access
     resume = dict(resume)
     analysis = json.loads(resume['analysis_data']) if resume['analysis_data'] else {}
     skills = json.loads(resume['skills']) if resume['skills'] else {}
     return render_template('result.html', resume=resume, analysis=analysis, skills=skills)
+
+@app.route('/compare/<int:resume_id>', methods=['GET', 'POST'])
+def compare_job(resume_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    db = get_db()
+    resume = db.execute(
+        'SELECT * FROM resumes WHERE id = ? AND user_id = ?',
+        (resume_id, user_id)
+    ).fetchone()
+
+    if not resume:
+        db.close()
+        flash('Resume not found.', 'error')
+        return redirect(url_for('dashboard'))
+
+    if request.method == 'POST':
+        job_description = request.form.get('job_description', '').strip()
+        if not job_description:
+            db.close()
+            flash('Please paste a job description to compare against.', 'error')
+            return redirect(url_for('compare_job', resume_id=resume_id))
+
+        text = resume['text_content'] or ''
+        report = compare_to_job(text, job_description)
+        new_ats_score = calculate_ats_score(text, job_description)
+
+        db.execute(
+            '''UPDATE resumes
+               SET job_description = ?, job_match_data = ?, ats_score = ?
+               WHERE id = ?''',
+            (job_description, json.dumps(report), new_ats_score, resume_id)
+        )
+        db.commit()
+        db.close()
+
+        report['ats_score'] = new_ats_score
+        return render_template(
+            'compare.html',
+            resume_id=resume_id,
+            original_name=resume['original_name'],
+            job_description=job_description,
+            report=report,
+        )
+
+    # GET: show existing comparison if one was already saved, else a blank form
+    report = json.loads(resume['job_match_data']) if resume['job_match_data'] else None
+    if report:
+        report['ats_score'] = resume['ats_score']
+    db.close()
+
+    return render_template(
+        'compare.html',
+        resume_id=resume_id,
+        original_name=resume['original_name'],
+        job_description=resume['job_description'] or '',
+        report=report,
+    )
+
+@app.route('/api/job-match/<int:resume_id>', methods=['POST'])
+def api_job_match(resume_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    data = request.get_json(force=True) or {}
+    job_description = data.get('job_description', '').strip()
+    if not job_description:
+        return jsonify({'error': 'job_description is required'}), 400
+
+    db = get_db()
+    resume = db.execute(
+        'SELECT * FROM resumes WHERE id = ? AND user_id = ?',
+        (resume_id, session['user_id'])
+    ).fetchone()
+
+    if not resume:
+        db.close()
+        return jsonify({'error': 'Resume not found'}), 404
+
+    text = resume['text_content'] or ''
+    report = compare_to_job(text, job_description)
+    new_ats_score = calculate_ats_score(text, job_description)
+
+    db.execute(
+        '''UPDATE resumes
+           SET job_description = ?, job_match_data = ?, ats_score = ?
+           WHERE id = ?''',
+        (job_description, json.dumps(report), new_ats_score, resume_id)
+    )
+    db.commit()
+    db.close()
+
+    report['ats_score'] = new_ats_score
+    return jsonify(report)
 
 @app.route('/delete/<int:resume_id>', methods=['POST'])
 def delete_resume(resume_id):
