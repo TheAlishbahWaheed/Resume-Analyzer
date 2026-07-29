@@ -5,6 +5,7 @@ import sqlite3, os, json
 from analyzer import parse_resume, analyze_resume, calculate_ats_score, compare_to_job
 
 app = Flask(__name__)
+
 app.secret_key = 'resume_analyzer_secret_2024'
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'pdf', 'docx'}
