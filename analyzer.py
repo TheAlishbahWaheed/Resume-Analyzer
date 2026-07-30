@@ -23,6 +23,7 @@ SOFT_SKILLS = [
     'presentation','negotiation','mentoring','strategic','planning'
 ]
 
+
 ACTION_VERBS = [
     'developed','designed','implemented','managed','led','created','built','optimized',
     'improved','increased','reduced','launched','delivered','coordinated','analyzed',
